@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import { ItemModel } from "../models/Items.js";
 import {UserModel} from "../models/Users.js";
+import {verifyToken} from "./users.js";
 
 const router = express.Router()
 
@@ -14,7 +15,7 @@ router.get("/", async (req, res) => {
     }
 })
 
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, async (req, res) => {
     const item = new ItemModel(req.body)
 
     try {
@@ -25,7 +26,7 @@ router.post("/", async (req, res) => {
     }
 })
 
-router.put("/", async (req, res) => {
+router.put("/", verifyToken, async (req, res) => {
 
     try {
         const item = await ItemModel.findById(req.body.itemID)
@@ -38,12 +39,34 @@ router.put("/", async (req, res) => {
     }
 })
 
-router.get("/savedItems/ids/:userID", async (req, res) => {
+router.put("/remove", verifyToken, async (req, res) => {
+    try {
+        const item = await ItemModel.findById(req.body.itemID)
+        const user = await UserModel.findById(req.body.userID)
+        const index = user.savedItems.indexOf(item._id);
+        if (index > -1) { // only splice array when item is found
+            user.savedItems.splice(index, 1); // 2nd parameter means remove one item only
+        }
+        await user.save()
+        res.json({ savedItems: user.savedItems })
+    } catch (error) {
+        res.json({ message: error })
+    }
+})
+
+router.get("/:userID", verifyToken, async (req, res) => {
+    const user = await UserModel.findById(req.params.userID)
+    const userListings = await ItemModel.find({
+        itemOwner: user._id
+    })
+    res.json({ userListings })
+})
+router.get("/savedItems/ids/:userID", verifyToken, async (req, res) => {
     const user = await UserModel.findById(req.params.userID)
     res.json({ savedItemIDs: user?.savedItems })
 })
 
-router.get("/savedItems/:userID", async (req, res) => {
+router.get("/savedItems/:userID", verifyToken, async (req, res) => {
   const user = await UserModel.findById(req.params.userID)
   const savedItems = await ItemModel.find({
       _id: { $in: user?.savedItems }

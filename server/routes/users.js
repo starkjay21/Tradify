@@ -2,6 +2,7 @@ import express from "express"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
 import {UserModel} from "../models/Users.js"
+import 'dotenv/config'
 
 const router = express.Router()
 
@@ -35,3 +36,17 @@ router.post("/login", async (req, res) => {
 })
 
 export { router as userRouter }
+
+export const verifyToken = (req, res, next) => {
+    const token = req.headers.authorization
+
+    if(!token){
+        return res.status(401).json({message: "You are not authenticated"})
+    }
+    jwt.verify(token, process.env.JWT_SECRET, (err) => {
+        if(err){
+            return res.status(403).json({message: "Token is not valid"})
+        }
+        next()
+    })
+}
